@@ -52,15 +52,92 @@
 
   <!-- ===== Manifest: edit this array to add your students ===== -->
   <script>
-    // Each entry: { id, name, title, type: 'html'|'mp4', src, thumb?, tool?, tags?[] }
-    // Place files under /submissions/<id>/, and use relative paths for same-origin hosting (GitHub Pages/Netlify/etc.).
+    // Each entry: { id, name, title, type: 'html'|'mp4'|'gif', src, tool?, tags?[] }
     const submissions = [
-      // Examples — replace with real entries
-      { id: "s01", name: "A. Kim",  title: "Thermal Oxidation Flow", type: "html", src: "submissions/s01/index.html", tool: "Blender", tags:["oxidation","furnace"] },
-      { id: "s02", name: "B. Lee",  title: "Photolithography Basics",  type: "mp4",  src: "submissions/s02/animation.mp4", tool: "PowerPoint", tags:["lithography","resist"] },
-      { id: "s03", name: "C. Park", title: "ALD HfO2 Stack",       type: "html", src: "submissions/s03/hfo2.html", tool: "MicroSims", tags:["ALD","dielectric"] },
+      {
+        id: "johnsonjoshua",
+        name: "Joshua Johnson",
+        title: "Lithography Exposure Animation",
+        type: "html",
+        src: "submissions/johnsonjoshua_1089192_57559411_EE5171 Lithography Animation.html",
+        tool: "HTML / JS",
+        tags: ["lithography", "resist"]
+      },
+      {
+        id: "manickaamit",
+        name: "Amit Manicka",
+        title: "Spin-on Doping Animation",
+        type: "html",
+        src: "submissions/manickaamit_537997_57245861_spin_on_doping_animation_AmitManicka.html",
+        tool: "HTML / JS",
+        tags: ["doping", "spin-on"]
+      },
+      {
+        id: "methulsohamsunil",
+        name: "Soham Sunil Methul",
+        title: "Fabrication Animation",
+        type: "html",
+        src: "submissions/methulsohamsunil_1732391_57548074_EE5171_Animation_methu004_Soham_Methul.html",
+        tool: "HTML / JS",
+        tags: ["fabrication"]
+      },
+      {
+        id: "zhuyiwei",
+        name: "Yiwei Zhu",
+        title: "Semiconductor Photolithography Animation",
+        type: "html",
+        src: "submissions/zhuyiwei_1829291_57198241_ee_5171_semiconductor_photolithography_animation_single_file_html.html",
+        tool: "HTML / JS",
+        tags: ["lithography"]
+      },
+      {
+        id: "butenhoffbrandon",
+        name: "Brandon Butenhoff",
+        title: "Fabrication Animation",
+        type: "mp4",
+        src: "submissions/butenhoffbrandon_1437644_57472974_BrandonButenhoffFabricationAnimation.mp4",
+        tool: "Video",
+        tags: ["fabrication"]
+      },
+      {
+        id: "haldarchandrika",
+        name: "Chandrika Haldar",
+        title: "Ion Implantation Fabrication",
+        type: "mp4",
+        src: "submissions/haldarchandrika_1946413_57562726_Ion Implantation Fabrication.mp4",
+        tool: "Video",
+        tags: ["implantation"]
+      },
+      {
+        id: "huangyilin",
+        name: "Yilin Huang",
+        title: "Czochralski Silicon Pulling",
+        type: "mp4",
+        src: "submissions/huangyilin_1792320_57549217_Czochralski Silicon Pulling.mp4",
+        tool: "Video",
+        tags: ["crystal growth"]
+      },
+      {
+        id: "nguyenandy",
+        name: "Andy Nguyen",
+        title: "Ion Implantation",
+        type: "mp4",
+        src: "submissions/nguyenandy_961203_57398580_Ion_Implantation.mp4",
+        tool: "Video",
+        tags: ["implantation"]
+      },
+      {
+        id: "sohniibrent",
+        name: "Brent Sohn",
+        title: "Resist Profile During Exposure",
+        type: "gif",
+        src: "submissions/sohniibrent_1500396_57563368_Brent_Sohn_Lithography_Exposure.gif",
+        tool: "Python / Matplotlib",
+        tags: ["lithography", "resist-profile"]
+      }
     ];
   </script>
+
 
   <!-- ===== Page logic: renders cards + search/filter ===== -->
   <script>
