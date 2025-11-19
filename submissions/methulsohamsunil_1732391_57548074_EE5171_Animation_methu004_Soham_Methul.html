@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Photolithography + Lift-Off Process</title>
+<style>
+body { margin:0; font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+       background:#050816; color:#f9fafb; display:flex; flex-direction:column; align-items:center; padding:20px; }
+h1 { margin:0.5rem 0 0.2rem; text-align:center; }
+h2 { margin:0 0 1rem; font-weight:400; color:#9ca3af; text-align:center; }
+#canvasContainer { background:#0b0f1c; padding:16px; border-radius:18px; box-shadow:0 20px 40px rgba(0,0,0,0.5); }
+canvas { background:#020617; border-radius:12px; }
+button { padding:6px 14px; border-radius:999px; background:#101a30; color:white; border:1px solid #64748b; cursor:pointer; }
+button:hover { background:#1d4ed8; }
+.pill { padding:4px 10px; border-radius:999px; border:1px solid #64748b; }
+#footer { margin-top:14px; font-size:0.8rem; color:#9ca3af; text-align:center; line-height:1.4; }
+a { color:#93c5fd; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<h1>Photolithography + Lift-Off Process</h1>
+<h2>EE5171 Microelectronic Fabrication – University of Minnesota</h2>
+
+<div id="canvasContainer">
+  <canvas id="fabCanvas" width="800" height="450"></canvas>
+</div>
+
+<div id="info" style="margin-top:10px; text-align:center;">
+  <span class="pill"><span id="stepNum"></span> – <span id="stepTitle"></span></span>
+  <div id="stepDesc" style="margin-top:6px; max-width:700px;"></div>
+</div>
+
+<div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+  <button id="prevBtn">⟵ Prev</button>
+  <button id="playPauseBtn">⏸ Pause</button>
+  <button id="nextBtn">Next ⟶</button>
+  <span class="pill">Auto-advances every 3s</span>
+</div>
+
+<div id="footer">
+  Created by <strong>Soham Sunil Methul</strong> (<a href="mailto:methu004@umn.edu">methu004@umn.edu</a>)<br/>
+  Course: EE5171 Microelectronic Fabrication · University of Minnesota
+</div>
+
+<script>
+const canvas = document.getElementById("fabCanvas");
+const ctx = canvas.getContext("2d");
+
+const steps = [
+  {title:"Bare silicon substrate",desc:"Start with a clean silicon wafer."},
+  {title:"Spin-coat photoresist",desc:"A uniform photoresist layer is applied and soft-baked."},
+  {title:"Developed resist window",desc:"UV exposure and development open a window down to silicon."},
+  {title:"Metal deposition",desc:"Metal is deposited only inside the opened window region."},
+  {title:"Lift-off (solvent)",desc:"Solvent dissolves the resist and lifts away metal on top of it."},
+  {title:"Final structure",desc:"Solvent is removed. Only the patterned metal line remains on silicon."}
+];
+
+let currentStep = 0;
+let playing = true;
+
+function drawBase() {
+  const w=800, h=450;
+  const waferH=60;
+  const subTop = h-waferH-20;
+  ctx.fillStyle="#020617"; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#374151";
+  ctx.fillRect(100, subTop, 600, waferH);
+
+  // Substrate label inside canvas
+  ctx.fillStyle="#e5e7eb"; 
+  ctx.font="14px system-ui";
+  ctx.textAlign="center";
+  ctx.fillText("Si substrate", 400, subTop + waferH/2 + 4);
+}
+
+function draw() {
+  const w=800, h=450;
+  const waferH=60;
+  const waferY=h-waferH-20;
+  const resistT=40, metalT=20, windowW=220;
+
+  drawBase();
+
+  // Resist (same width as substrate)
+  if (currentStep===1) {
+    ctx.fillStyle="#fb7185";
+    ctx.fillRect(100, waferY-resistT, 600, resistT);
+  } else if (currentStep===2 || currentStep===3) {
+    ctx.fillStyle="#fb7185";
+    const side=(600-windowW)/2;
+    ctx.fillRect(100, waferY-resistT, side, resistT);
+    ctx.fillRect(100+side+windowW, waferY-resistT, side, resistT);
+  }
+
+  // Metal
+  if (currentStep>=3) {
+    ctx.fillStyle="#facc15";
+    ctx.fillRect(400-windowW/2, waferY-metalT, windowW, metalT);
+    ctx.fillStyle="rgba(250,250,210,0.3)";
+    ctx.fillRect(400-windowW/2, waferY-metalT, windowW, 5);
+  }
+
+  // Solvent bubble only in step 4
+  if (currentStep===4) {
+    ctx.fillStyle="#38bdf8";
+    ctx.beginPath(); ctx.arc(220, waferY-110, 28, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle="white"; ctx.font="12px system-ui"; ctx.fillText("Solvent",220,waferY-104);
+    ctx.fillStyle="rgba(200,200,200,0.5)";
+    ctx.beginPath(); ctx.arc(260, waferY-40, 10,0,2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(550, waferY-60, 9,0,2*Math.PI); ctx.fill();
+  }
+
+  // Final metal label
+  if (currentStep===5) {
+    ctx.fillStyle="#e5e7eb"; ctx.font="14px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText("Patterned metal", 400, waferY-metalT-18);
+  }
+
+  // ====== MATERIAL LABELS (inside animation) ======
+  ctx.font = "13px system-ui";
+  ctx.textAlign = "left";
+
+  // Si substrate label arrow (all steps)
+  ctx.strokeStyle = "rgba(156,163,175,0.9)";
+  ctx.beginPath();
+  ctx.moveTo(720, h-40);
+  ctx.lineTo(700, waferY + waferH/2);
+  ctx.stroke();
+  ctx.fillStyle = "#d1d5db";
+  ctx.fillText("Si substrate", 640, h-30);
+
+  // Photoresist label (steps 2–3 where it exists fully/patterned; also 1)
+  if (currentStep >= 1 && currentStep <= 3) {
+    ctx.strokeStyle = "rgba(248,113,113,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(140, waferY-resistT-10);
+    ctx.lineTo(160, waferY-resistT+5);
+    ctx.stroke();
+    ctx.fillStyle = "#fecaca";
+    ctx.fillText("Photoresist", 60, waferY-resistT-15);
+  }
+
+  // Metal label (steps 3–5)
+  if (currentStep >= 3) {
+    ctx.strokeStyle = "rgba(250,204,21,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(560, waferY-metalT-10);
+    ctx.lineTo(540, waferY-metalT+5);
+    ctx.stroke();
+    ctx.fillStyle = "#fef3c7";
+    ctx.fillText("Metal film (Al)", 580, waferY-metalT-15);
+  }
+
+  // Solvent label arrow (step 4)
+  if (currentStep === 4) {
+    ctx.strokeStyle = "rgba(56,189,248,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(250, waferY-140);
+    ctx.lineTo(230, waferY-120);
+    ctx.stroke();
+    ctx.fillStyle = "#bae6fd";
+    ctx.fillText("Solvent (lift-off)", 160, waferY-145);
+  }
+}
+
+function updateUI(){
+  document.getElementById("stepNum").textContent="Step "+(currentStep+1);
+  document.getElementById("stepTitle").textContent=steps[currentStep].title;
+  document.getElementById("stepDesc").textContent=steps[currentStep].desc;
+}
+
+function nextStep(){ currentStep=(currentStep+1)%steps.length; draw(); updateUI(); }
+function prevStep(){ currentStep=(currentStep-1+steps.length)%steps.length; draw(); updateUI(); }
+
+document.getElementById("nextBtn").onclick=nextStep;
+document.getElementById("prevBtn").onclick=prevStep;
+document.getElementById("playPauseBtn").onclick=()=>{
+  playing=!playing;
+  document.getElementById("playPauseBtn").textContent = playing?"⏸ Pause":"▶ Play";
+};
+
+setInterval(()=>{ if(playing) nextStep(); },3000);
+
+draw(); updateUI();
+</script>
+
+</body>
+</html>

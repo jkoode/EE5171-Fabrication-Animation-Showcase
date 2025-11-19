@@ -1,0 +1,447 @@
+<!--
+EE5171 Fabrication Animation Contest
+Title: Plasma Processes (O₂ Ash / ICP‑RIE / PECVD)
+Author: Yiwei Zhu
+How to use: Open this file in any modern browser. Click Play. You can Step forward/back, or change speed. Use the Download button to save a submission copy.
+What it shows (3 modules):
+ • O₂ Ash (PR strip)
+ • ICP‑RIE (anisotropic Si trench etch)
+ • PECVD (SiN/SiO₂ film growth)
+Feel free to edit labels/colors.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EE5171 • Plasma Processes — O₂ Ash, ICP‑RIE Etch, PECVD Deposition</title>
+<style>
+  :root{
+    --bg:#0b1020;       /* canvas background */
+    --grid:#1b2544;
+    --si:#7c4f2e;       /* silicon */
+    --sio2:#b6e3ff;     /* oxide */
+    --pr:#ffdf6d;       /* photoresist */
+    --pr-exposed:#ffeaa6; /* lighter PR tint */
+    --mask:#121212;     /* chromium mask */
+    --uv:#89c2ff;
+    --etch:#9be7ff;
+    --text:#e8eefb;
+    --muted:#9bb0d3;
+    --accent:#7ae582;
+    --danger:#ff6b6b;
+    --metal:#c9cfd8;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#0b1020 0%,#0d1330 100%);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--text)}
+  .wrap{max-width:1000px;margin:24px auto;padding:16px}
+  h1{font-size:26px;margin:0 0 6px;font-weight:800;letter-spacing:.2px}
+  .sub{color:var(--muted);margin-bottom:16px}
+
+  .panel{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:stretch}
+  @media (max-width: 900px){.panel{grid-template-columns:1fr}}
+
+  .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 14px 12px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button, .btn{
+    background:#121a36;color:#e6edff;border:1px solid #273259;border-radius:12px;padding:10px 12px;font-weight:650;cursor:pointer;transition:.18s transform,.18s background,.18s border;user-select:none
+  }
+  button:hover{transform:translateY(-1px);background:#0f1731;border-color:#39508d}
+  button:active{transform:translateY(0)}
+  .primary{background:#1c2b5e;border-color:#3b63db}
+  .primary:hover{background:#1a2a56}
+  .ghost{background:transparent}
+  .danger{border-color:#ff8585;color:#ffdede}
+  .accent{border-color:#66e3a1;color:#dfffea}
+
+  .speed{display:flex;align-items:center;gap:10px;margin-top:10px}
+  input[type=range]{width:180px}
+
+  .steps{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .step{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:10px;border:1px dashed rgba(255,255,255,.08)}
+  .step.active{border-style:solid;background:rgba(58,102,224,.12)}
+  .dot{width:10px;height:10px;border-radius:50%;background:#405aa3;margin-top:5px}
+  .step.active .dot{background:#7ae582}
+  .step small{color:var(--muted)}
+
+  .scene{position:relative;aspect-ratio:16/9;width:100%;background:radial-gradient(1200px 80% at 50% 55%,rgba(58,96,210,.10),transparent),
+           linear-gradient(180deg,rgba(255,255,255,.05),transparent 22%),
+           repeating-linear-gradient(0deg,transparent 0 36px,rgba(255,255,255,.03) 36px 37px);
+         border-radius:16px;border:1px solid rgba(255,255,255,.08);overflow:hidden}
+  svg{width:100%;height:100%;display:block}
+  .label{font: 12px/1.2 "Inter",sans-serif;fill:var(--text)}
+  .muted{fill:var(--muted)}
+
+  /* ===== Layer primitives (animated via classes) ===== */
+  .silicon{fill:var(--si)}
+  .oxide{fill:var(--sio2);transition:all .7s ease}
+  .pr{fill:var(--pr);transition:all .7s ease}
+  .pr.exposed{fill:var(--pr-exposed)}
+  .mask{fill:var(--mask);opacity:.95;transition:opacity .5s ease}
+  .mask.hidden{opacity:0}
+  .uvray{stroke:var(--uv);stroke-width:3;stroke-linecap:round;opacity:0}
+  .uvray.glow{filter:url(#glow)}
+  .uvray.on{animation:uv 1.0s infinite ease-in-out}
+  @keyframes uv{0%{opacity:0}35%{opacity:1}70%{opacity:.2}100%{opacity:0}}
+  .liquid{fill:rgba(155,231,255,0.25);stroke:var(--etch);stroke-width:2;opacity:0;transition:opacity .5s ease}
+  .liquid.show{opacity:1}
+  .etch-haze{opacity:0}
+  .etch-haze.show{opacity:1;animation:haze 1s linear infinite}
+  @keyframes haze{0%{opacity:.1}50%{opacity:.45}100%{opacity:.1}}
+
+  .fade{opacity:0;transition:opacity .5s ease}
+  .fade.show{opacity:1}
+
+  .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);margin:10px 0}
+  .foot{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;margin-top:8px}
+  #plasmaGlow.pulse{animation:glowPulse 1.2s ease-in-out infinite}
+  @keyframes glowPulse{0%{opacity:.12}50%{opacity:.38}100%{opacity:.12}}
+  #ionArrows path{opacity:.9}
+  select{background:#121a36;color:#e6edff;border:1px solid #273259;border-radius:12px;padding:8px 10px;font-weight:600;margin-left:6px}
+  .hide{display:none}
+  .film{fill:#ffdca8;transition:all .7s ease}
+  #ionBeams line{opacity:.9}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Plasma Processes: O₂ Ash · ICP‑RIE Etch · PECVD Deposition</h1>
+    <div class="sub">By Yiwei Zhu · EE5171 • Three plasma-based semiconductor process animations with step controls and export.</div>
+
+    <div class="panel">
+      <div class="card">
+        <div class="controls">
+          <button id="play" class="primary">▶ Play</button>
+          <button id="pause">⏸ Pause</button>
+          <button id="stepPrev" class="ghost">⟵ Step</button>
+          <button id="stepNext" class="ghost">Step ⟶</button>
+          <button id="reset" class="danger">↺ Reset</button>
+          <button id="dl" class="accent">⬇ Download .html</button>
+          <span style="flex:1"></span>
+          <label>Process:</label>
+          <select id="mode">
+            <option value="ash">O₂ Ash (PR strip)</option>
+            <option value="icp">ICP‑RIE (Si trench)</option>
+            <option value="pecvd">PECVD (SiN/SiO₂)</option>
+          </select>
+          <label id="matLabel" class="hide">Material:</label>
+          <select id="material" class="hide">
+            <option value="SiN">SiN</option>
+            <option value="SiO2">SiO₂</option>
+          </select>
+        </div>
+        <div class="speed">
+          <label for="speed">Speed:</label>
+          <input id="speed" type="range" min="0.5" max="2.0" step="0.1" value="1"/>
+          <span id="speedVal">1.0×</span>
+        </div>
+        <div class="divider"></div>
+        <div class="steps" id="steps"></div>
+      </div>
+
+      <div class="card scene">
+        <!-- SVG scene: cross-section -->
+        <svg viewBox="0 0 960 540" aria-label="Plasma process cross-section animation">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="var(--uv)" flood-opacity="0.8"/>
+            </filter>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M40 0H0V40" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+            </pattern>
+          </defs>
+
+          <!-- soft grid background -->
+          <rect x="0" y="0" width="960" height="540" fill="url(#grid)" opacity="0.25"/>
+
+          <!-- labels top -->
+          <text class="label muted" x="20" y="24">Not to scale • Cross-section</text>
+          <text id="caption" class="label" x="20" y="44">Step 0 — Start wafer (Si with thin thermal SiO₂)</text>
+
+          <!-- WAFER STACK (baseline at y=420) -->
+          <!-- Silicon -->
+          <rect id="si" class="silicon" x="60" y="420" width="840" height="100" rx="8"/>
+          
+          <!-- Thin oxide on top of silicon; height will change slightly to emphasize growth -->
+          <rect id="oxide" class="oxide" x="60" y="410" width="840" height="10" rx="3"/>
+
+          <!-- Film layer for PECVD (grows upward) -->
+          <rect id="film" class="film" x="60" y="400" width="840" height="0" rx="3"/>
+
+          <!-- Photoresist; starts at 0 height -->
+          <rect id="prLeft"  class="pr" x="60" y="330" width="320" height="0" rx="6"/>
+          <rect id="prOpen"  class="pr" x="380" y="330" width="200" height="0" rx="6"/>
+          <rect id="prRight" class="pr" x="580" y="330" width="320" height="0" rx="6"/>
+
+          <!-- Mask above wafer (unused in current modules, kept for extension) -->
+          <g id="maskGroup" class="mask hidden">
+            <rect x="60" y="210" width="840" height="40" rx="6"/>
+            <rect x="60"  y="210" width="320" height="40" fill="black"/>
+            <rect x="580" y="210" width="320" height="40" fill="black"/>
+            <text class="label" x="780" y="236" text-anchor="middle" fill="#d8d8d8">Photomask (Cr on glass)</text>
+          </g>
+
+          <!-- Plasma (generic block) -->
+          <g id="plasmaGroup" class="fade">
+            <rect id="plasmaGlow" x="60" y="250" width="840" height="120" rx="12" fill="#a78bfa" opacity="0.22"/>
+            <text id="plasmaText" class="label" x="480" y="244" text-anchor="middle" fill="#c4b5fd">O₂ plasma</text>
+          </g>
+          <!-- Ion beams for ICP‑RIE anisotropy visualization -->
+          <g id="ionBeams" class="fade">
+            <line x1="430" y1="250" x2="430" y2="330" stroke="#bcd7ff" stroke-width="3" stroke-linecap="round"/>
+            <line x1="480" y1="250" x2="480" y2="330" stroke="#bcd7ff" stroke-width="3" stroke-linecap="round"/>
+            <line x1="530" y1="250" x2="530" y2="330" stroke="#bcd7ff" stroke-width="3" stroke-linecap="round"/>
+          </g>
+          <text id="biasLabel" class="label" x="480" y="236" text-anchor="middle" fill="#bcd7ff" opacity="0">RF bias</text>
+
+          <!-- Developer liquid hint (used in some flows) -->
+          <rect id="developer" class="liquid" x="60" y="310" width="840" height="120" rx="10"/>
+
+          <!-- Etch haze arrows in opening -->
+          <g id="etchHaze" class="etch-haze">
+            <path d="M470 400 l20 -20" stroke="var(--etch)" stroke-width="3"/>
+            <path d="M500 400 l20 -20" stroke="var(--etch)" stroke-width="3"/>
+            <path d="M440 400 l20 -20" stroke="var(--etch)" stroke-width="3"/>
+          </g>
+
+          <!-- Contact pointers -->
+          <g id="pointers" class="fade">
+            <text class="label" x="120" y="456">Si (p-type)</text>
+            <text class="label" x="120" y="404">SiO₂</text>
+            <text class="label" x="120" y="318">Photoresist</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>Tip: Use the Step buttons while presenting to narrate each operation.</span>
+      <span>v1.1 • MIT License</span>
+    </div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+  // ==== DOM refs ====
+  const caption = document.getElementById('caption');
+  const prL = document.getElementById('prLeft');
+  const prO = document.getElementById('prOpen');
+  const prR = document.getElementById('prRight');
+  const oxide = document.getElementById('oxide');
+  const mask = document.getElementById('maskGroup');
+  const developer = document.getElementById('developer');
+  const etchHaze = document.getElementById('etchHaze');
+  const plasmaGroup = document.getElementById('plasmaGroup');
+  const plasmaGlow  = document.getElementById('plasmaGlow');
+  const plasmaText  = document.getElementById('plasmaText');
+  const ionBeams    = document.getElementById('ionBeams');
+  const biasLabel   = document.getElementById('biasLabel');
+  const film        = document.getElementById('film');
+  const pointers    = document.getElementById('pointers');
+  const stepsList   = document.getElementById('steps');
+  const speedRange  = document.getElementById('speed');
+  const speedVal    = document.getElementById('speedVal');
+
+  const controls = {
+    play: document.getElementById('play'),
+    pause: document.getElementById('pause'),
+    stepPrev: document.getElementById('stepPrev'),
+    stepNext: document.getElementById('stepNext'),
+    reset: document.getElementById('reset'),
+    dl: document.getElementById('dl')
+  };
+  const modeSel = document.getElementById('mode');
+  const matSel  = document.getElementById('material');
+  const matLabel= document.getElementById('matLabel');
+
+  // ==== Helpers ====
+  function resetBase(){
+    [prL, prO, prR].forEach(el=>{ el.setAttribute('height',0); el.setAttribute('y',330); el.classList.remove('exposed'); });
+    oxide.setAttribute('y',410); oxide.setAttribute('height',10);
+    plasmaGroup.classList.remove('show');
+    plasmaGlow.classList.remove('pulse');
+    ionBeams.classList.remove('show');
+    biasLabel.setAttribute('opacity','0');
+    developer.classList.remove('show');
+    etchHaze.classList.remove('show');
+    mask.classList.add('hidden');
+    const og = document.getElementById('oxideGap'); if(og) og.remove();
+    const st = document.getElementById('siTrench'); if(st) st.remove();
+    film.setAttribute('height',0); film.setAttribute('y',400);
+  }
+  function setFilmColor(kind){
+    if(kind==='SiO2'){
+      const val = getComputedStyle(document.documentElement).getPropertyValue('--sio2') || '#b6e3ff';
+      film.setAttribute('fill', val.trim() || '#b6e3ff');
+    } else {
+      film.setAttribute('fill','#ffdca8');
+    }
+  }
+
+  // ==== Step definitions ====
+  const StepSets = {
+    ash: [
+      {title:'Step 0 — Start: wafer with PR', detail:'Si + SiO₂ + photoresist to be stripped (O₂ plasma ashing).', run(){
+        resetBase();
+        [prL, prO, prR].forEach(el=>{ el.setAttribute('height',80); el.setAttribute('y',250); });
+        plasmaText.textContent = 'O₂ plasma'; caption.textContent = this.title; pointers.classList.add('show');
+      }, dur: 900},
+      {title:'Step 1 — Flow O₂ & ignite plasma', detail:'Generate reactive O radicals for ashing.', run(){
+        plasmaGroup.classList.add('show'); plasmaGlow.classList.add('pulse'); caption.textContent = this.title;
+      }, dur: 1100},
+      {title:'Step 2 — Ashing: PR removal', detail:'O radicals oxidize PR → CO₂/H₂O; PR gradually disappears.', run(){
+        [prL, prO, prR].forEach(el=>{ el.setAttribute('height',0); el.setAttribute('y',330); }); caption.textContent = this.title;
+      }, dur: 1200},
+      {title:'Step 3 — Stop plasma & vent', detail:'Turn off RF, remove wafer.', run(){
+        plasmaGlow.classList.remove('pulse'); plasmaGroup.classList.remove('show'); caption.textContent = this.title;
+      }, dur: 900},
+      {title:'Step 4 — Result: clean wafer', detail:'Surface free of PR; ready for next step.', run(){ caption.textContent = this.title; pointers.classList.remove('show'); }, dur: 900}
+    ],
+    icp: [
+      {title:'Step 0 — Start: PR-masked Si (open window)', detail:'Use PR as mask; trench will etch in opening.', run(){
+        resetBase();
+        prL.setAttribute('height',80); prL.setAttribute('y',250);
+        prR.setAttribute('height',80); prR.setAttribute('y',250);
+        prO.setAttribute('height',0);  prO.setAttribute('y',330);
+        plasmaText.textContent = 'ICP plasma'; caption.textContent = this.title; pointers.classList.add('show');
+      }, dur: 1000},
+      {title:'Step 1 — Ignite ICP & apply bias', detail:'High-density plasma with substrate RF bias for anisotropy.', run(){
+        plasmaGroup.classList.add('show'); plasmaGlow.classList.add('pulse'); ionBeams.classList.add('show'); biasLabel.setAttribute('opacity','1'); caption.textContent = this.title;
+      }, dur: 1100},
+      {title:'Step 2 — Anisotropic trench etch', detail:'Directional ions drive vertical etch; smooth sidewalls.', run(){
+        let st = document.getElementById('siTrench');
+        if(!st){
+          st = document.createElementNS('http://www.w3.org/2000/svg','rect');
+          st.setAttribute('id','siTrench');
+          st.setAttribute('x','380'); st.setAttribute('y','420');
+          st.setAttribute('width','200'); st.setAttribute('height','0');
+          st.setAttribute('fill','url(#grid)');
+          oxide.after(st);
+        }
+        setTimeout(()=>{ st.setAttribute('height','60'); }, 50);
+        caption.textContent = this.title;
+      }, dur: 1200},
+      {title:'Step 3 — Stop plasma', detail:'Turn off ICP power & bias.', run(){
+        plasmaGlow.classList.remove('pulse'); plasmaGroup.classList.remove('show'); ionBeams.classList.remove('show'); biasLabel.setAttribute('opacity','0'); caption.textContent = this.title;
+      }, dur: 900},
+      {title:'Step 4 — Result: Si trench (anisotropic)', detail:'Vertical sidewalls; PR mask still present.', run(){ caption.textContent = this.title; pointers.classList.remove('show'); }, dur: 900}
+    ],
+    pecvd: [
+      {title:'Step 0 — Start: bare wafer', detail:'No PR; film thickness = 0.', run(){
+        resetBase(); setFilmColor(matSel.value || 'SiN'); caption.textContent = this.title; pointers.classList.add('show');
+      }, dur: 900},
+      {title:'Step 1 — Ignite PECVD plasma', detail:'Precursors (e.g., SiH₄+NH₃/N₂ for SiN; SiH₄+N₂O for SiO₂).', run(){
+        plasmaText.textContent = 'PECVD plasma'; plasmaGroup.classList.add('show'); plasmaGlow.classList.add('pulse'); caption.textContent = this.title;
+      }, dur: 1100},
+      {title:'Step 2 — Film growth (uniform)', detail:'Neutral radicals drive low‑T growth; film grows uniformly.', run(){
+        film.setAttribute('height',30); film.setAttribute('y',370); caption.textContent = this.title;
+      }, dur: 1200},
+      {title:'Step 3 — Stop plasma', detail:'Turn off RF; pump/vent.', run(){
+        plasmaGlow.classList.remove('pulse'); plasmaGroup.classList.remove('show'); caption.textContent = this.title;
+      }, dur: 900},
+      {title:'Step 4 — Result: SiN/SiO₂ film', detail:'Ready for patterning or next module.', run(){ caption.textContent = this.title; pointers.classList.remove('show'); }, dur: 900}
+    ]
+  };
+
+  // ==== Player state & UI ====
+  let Steps = StepSets.ash;
+  let idx = 0;            // current step index
+  let timer = null;       // current timer handle
+  let speed = 1.0;        // playback speed
+  let stepItems = [];     // step list DOM nodes
+  let seqToken = 0;       // cancel token for play sequences
+
+  function buildStepsUI(){
+    stepsList.innerHTML = '';
+    Steps.forEach((s, i)=>{
+      const el = document.createElement('div');
+      el.className = 'step' + (i===0? ' active':'' );
+      el.innerHTML = `<div class="dot"></div><div><strong>${s.title}</strong><br/><small>${s.detail}</small></div>`;
+      stepsList.appendChild(el);
+    });
+    stepItems = Array.from(document.querySelectorAll('.step'));
+  }
+  function runStep(i){
+    idx = i;
+    Steps[i].run();
+    stepItems.forEach((el,k)=>el.classList.toggle('active', k===i));
+  }
+  function stop(){
+    if(timer){ clearTimeout(timer); timer = null; }
+    seqToken++;
+  }
+  function play(){
+    stop();
+    const my = ++seqToken;
+    const tick = (k)=>{
+      runStep(k);
+      if(my !== seqToken) return;               // aborted
+      if(k >= Steps.length-1) return;           // finished
+      timer = setTimeout(()=> tick(k+1), Steps[k].dur / speed);
+    };
+    tick(idx);
+  }
+  function reset(){ stop(); idx = 0; runStep(0); }
+
+  function setMode(m){
+    stop();
+    Steps = StepSets[m];
+    const showMat = (m==='pecvd');
+    matLabel.classList.toggle('hide', !showMat);
+    matSel.classList.toggle('hide', !showMat);
+    buildStepsUI();
+    reset();
+  }
+
+  // ==== Init ==== 
+  buildStepsUI();
+  runStep(0);
+  speedVal.textContent = '1.0×';
+  setMode(modeSel.value); // ensure proper dropdown visibility without changing mode
+
+  // ==== Events ====
+  controls.play.addEventListener('click', ()=>{ play(); });
+  controls.pause.addEventListener('click', ()=>{ stop(); });
+  controls.stepPrev.addEventListener('click', ()=>{ stop(); idx=Math.max(0, idx-1); runStep(idx); });
+  controls.stepNext.addEventListener('click', ()=>{ stop(); idx=Math.min(Steps.length-1, idx+1); runStep(idx); });
+  controls.reset.addEventListener('click', ()=>{ reset(); });
+
+  speedRange.addEventListener('input', (e)=>{
+    speed = parseFloat(e.target.value) || 1.0;
+    speedVal.textContent = speed.toFixed(1) + '×';
+  });
+  modeSel.addEventListener('change', (e)=>{ setMode(e.target.value); });
+  matSel.addEventListener('change', ()=>{ if(modeSel.value==='pecvd'){ setFilmColor(matSel.value); } });
+
+  // ==== Download ====
+  controls.dl.addEventListener('click', ()=>{
+    const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'EE5171_Photolithography_Animation_YiweiZhu.html';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 500);
+  });
+
+  // ==== Smoke tests (console) ====
+  // These lightweight tests verify basic wiring without altering UI.
+  (function SMOKE(){
+    try{
+      console.group('%cSMOKE TESTS','color:#7ae582');
+      console.assert(!!controls.play, 'Play button exists');
+      console.assert(Array.isArray(StepSets.ash) && StepSets.ash.length>=4, 'Ash step set OK');
+      console.assert(Array.isArray(StepSets.icp) && StepSets.icp.length>=4, 'ICP step set OK');
+      console.assert(Array.isArray(StepSets.pecvd) && StepSets.pecvd.length>=4, 'PECVD step set OK');
+      const prevMode = modeSel.value;
+      setMode('icp'); console.assert(Steps===StepSets.icp, 'Mode switch to ICP works');
+      setMode('pecvd'); console.assert(!matLabel.classList.contains('hide'), 'Material dropdown shows for PECVD');
+      setMode(prevMode);
+      console.groupEnd();
+    }catch(err){ console.error('Smoke test failed:', err); }
+  })();
+
+})();
+</script>
+</body>
+</html>

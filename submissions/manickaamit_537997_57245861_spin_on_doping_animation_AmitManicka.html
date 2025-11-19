@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Spin-On Doping – FINAL + DOWNLOAD</title>
+  <style>
+    body { 
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; background: #eef5ff; font-family: Arial, sans-serif; margin: 0; 
+    }
+    #canvas { border: 2px solid #000; background: #fff; margin-bottom: 10px; }
+    #caption { margin: 8px 0; font-size: 18px; font-weight: bold; text-align: center; max-width: 700px; }
+    .controls { display: flex; flex-direction: column; align-items: center; width: 700px; }
+    button, input { margin: 5px; font-size: 16px; }
+    input[type="range"] { width: 100%; }
+    #downloadBtn { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
+    #downloadBtn:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="700" height="400"></canvas>
+  <div id="caption">Initializing…</div>
+  <div class="controls">
+    <button id="toggle">Pause</button>
+    <input type="range" id="scrub" min="0" max="1599" value="0" step="1">
+    <button id="downloadBtn">Download HTML File</button>
+  </div>
+
+<script>
+/* ---------- GLOBALS ---------- */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const caption = document.getElementById('caption');
+const toggleBtn = document.getElementById('toggle');
+const scrubBar = document.getElementById('scrub');
+const downloadBtn = document.getElementById('downloadBtn');
+
+let running = true;
+const totalFramesPerStep = 200;
+const totalSteps = 8;
+const totalFrames = totalFramesPerStep * totalSteps;
+let globalFrame = 0;
+
+/* Colors */
+const oxide   = "#cfe8ff";
+const silicon = "#6a92ff";
+const resist  = "#ffd36a";
+const dopant  = "#ff6a00";
+
+/* Geometry */
+const wafer = { x: 50, y: 250, w: 600, h: 120 };
+const oxideH = 20;
+const resistH = 25;
+const maskW = 250;
+const maskPad = (wafer.w - maskW) / 2;
+const filmH = 8;
+
+/* ---------- DRAW HELPERS ---------- */
+function clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+function drawWafer() {
+  ctx.fillStyle = silicon;
+  ctx.fillRect(wafer.x, wafer.y, wafer.w, wafer.h);
+}
+
+function drawOxide(open = false) {
+  ctx.fillStyle = oxide;
+  if (!open) {
+    ctx.fillRect(wafer.x, wafer.y - oxideH, wafer.w, oxideH);
+  } else {
+    ctx.fillRect(wafer.x, wafer.y - oxideH, maskPad, oxideH);
+    ctx.fillRect(wafer.x + wafer.w - maskPad, wafer.y - oxideH, maskPad, oxideH);
+  }
+}
+
+function drawResist(open = false) {
+  ctx.fillStyle = resist;
+  const resistY = wafer.y - oxideH - resistH;
+  if (!open) {
+    ctx.fillRect(wafer.x, resistY, wafer.w, resistH);
+  } else {
+    ctx.fillRect(wafer.x, resistY, maskPad, resistH);
+    ctx.fillRect(wafer.x + wafer.w - maskPad, resistY, maskPad, resistH);
+  }
+}
+
+/* TOP VIEW: NOW SHOWS BLUE SILICON IN WINDOW */
+function drawTopView() {
+  const topY = 100, layerH = 50;
+  // Oxide layer
+  ctx.fillStyle = oxide;
+  ctx.fillRect(wafer.x, topY, wafer.w, layerH);
+  // Resist layer
+  ctx.fillStyle = resist;
+  ctx.fillRect(wafer.x, topY, wafer.w, layerH);
+  // Clear window → show blue silicon
+  ctx.fillStyle = silicon;
+  ctx.fillRect(wafer.x + maskPad, topY, maskW, layerH);
+  // Black border
+  ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+  ctx.strokeRect(wafer.x + maskPad, topY, maskW, layerH);
+  ctx.fillStyle = "black"; ctx.font = "16px Arial"; ctx.textAlign = "center";
+  ctx.fillText("TOP VIEW", 350, 85);
+}
+
+function drawDroplets() {
+  for (let i = 0; i < 6; i++) {
+    const angle = (i * Math.PI / 3) + globalFrame / 10;
+    const radius = 60 + (globalFrame % 60);
+    const cx = 350 + radius * Math.cos(angle);
+    const cy = 110 + radius * Math.sin(angle);
+    ctx.beginPath(); ctx.fillStyle = dopant; ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawDopantFilm() {
+  ctx.fillStyle = dopant;
+  const resistTop = wafer.y - oxideH - resistH;
+  ctx.fillRect(wafer.x, resistTop - filmH, maskPad, filmH);
+  ctx.fillRect(wafer.x + wafer.w - maskPad, resistTop - filmH, maskPad, filmH);
+  ctx.fillRect(wafer.x + maskPad, wafer.y - filmH, maskW, filmH);
+}
+
+/* ---------- RENDER ---------- */
+function render() {
+  clear();
+
+  const step = Math.floor(globalFrame / totalFramesPerStep) % totalSteps;
+  const frameInStep = globalFrame % totalFramesPerStep;
+
+  // Update slider
+  scrubBar.value = globalFrame;
+
+  if (step === 0) {
+    caption.textContent = "Start: p-type Silicon with thermal SiO₂";
+    drawOxide(false); drawWafer();
+    ctx.fillStyle = "black"; ctx.font = "14px Arial"; ctx.textAlign = "center";
+    ctx.fillText("SiO₂", wafer.x + wafer.w / 2, wafer.y - oxideH - 8);
+    ctx.fillText("p-type Si", wafer.x + wafer.w / 2, wafer.y + wafer.h / 2);
+  }
+  else if (step === 1) {
+    caption.textContent = "Apply photoresist and pattern a window";
+    drawOxide(false); drawResist(false); drawWafer();
+    ctx.fillStyle = "black"; ctx.fillText("Photoresist", wafer.x + wafer.w / 2, wafer.y - oxideH - resistH - 8);
+  }
+  else if (step === 2) {
+    caption.textContent = "Etch oxide in window (resist still present)";
+    drawOxide(true); drawResist(true); drawWafer();
+  }
+  else if (step === 3) {
+    caption.textContent = "Top view: Doping window opened | Cross-section";
+    drawTopView();  // NOW SHOWS BLUE SILICON
+    drawOxide(true); drawResist(true); drawWafer();
+  }
+  else if (step === 4) {
+    caption.textContent = "Spin-on dopant dispensed (orange droplets)";
+    drawOxide(true); drawResist(true); drawWafer();
+    drawDroplets();
+  }
+  else if (step === 5) {
+    caption.textContent = "Spin coat: uniform dopant film on resist + exposed Si";
+    drawOxide(true); drawResist(true); drawWafer();
+    drawDopantFilm();
+  }
+  else if (step === 6) {
+    caption.textContent = "Bake + Drive-in: Dopants diffuse into Si";
+    drawOxide(true); drawResist(true); drawWafer();
+    drawDopantFilm();
+    const depth = Math.min(frameInStep / totalFramesPerStep * 40, 40);
+    ctx.fillStyle = dopant;
+    ctx.fillRect(wafer.x + maskPad, wafer.y, maskW, depth);
+  }
+  else if (step === 7) {
+    caption.textContent = "Strip mask → Doped region formed";
+    drawWafer();
+    ctx.fillStyle = dopant;
+    ctx.fillRect(wafer.x + maskPad, wafer.y, maskW, 40);
+    ctx.fillStyle = "black"; ctx.font = "14px Arial"; ctx.textAlign = "center";
+    ctx.fillText("p-type Si", wafer.x + wafer.w / 2, wafer.y + wafer.h / 2);
+    ctx.fillStyle = "white";
+    ctx.fillText("n+ Doped Region", wafer.x + wafer.w / 2, wafer.y + 20);
+  }
+
+  // Labels (steps 2–6)
+  if (step >= 2 && step <= 6) {
+    const labelY = wafer.y - oxideH - resistH - 40;
+    ctx.fillStyle = "black"; ctx.font = "14px Arial"; ctx.textAlign = "center";
+    ctx.fillText("Photoresist", wafer.x + maskPad / 2, labelY);
+    ctx.fillText("Photoresist", wafer.x + wafer.w - maskPad / 2, labelY);
+    ctx.fillText("SiO₂", wafer.x + maskPad / 2, labelY + 20);
+    ctx.fillText("SiO₂", wafer.x + wafer.w - maskPad / 2, labelY + 20);
+    ctx.fillText("p-type Si", wafer.x + wafer.w / 2, wafer.y + wafer.h / 2);
+    if (step >= 5 && step <= 6) {
+      ctx.fillStyle = dopant;
+      ctx.fillText("Spin-on Dopant", wafer.x + wafer.w / 2, wafer.y - filmH - 8);
+    }
+    if (step === 6) {
+      ctx.fillStyle = "white";
+      ctx.fillText("n+ Doped Region", wafer.x + wafer.w / 2, wafer.y + 20);
+    }
+  }
+}
+
+/* ---------- ANIMATION & CONTROLS ---------- */
+function animate() {
+  if (running) {
+    globalFrame = (globalFrame + 1) % totalFrames;
+  }
+  render();
+  requestAnimationFrame(animate);
+}
+
+toggleBtn.onclick = () => {
+  running = !running;
+  toggleBtn.textContent = running ? 'Pause' : 'Play';
+};
+
+scrubBar.oninput = () => {
+  globalFrame = parseInt(scrubBar.value);
+  render();
+};
+
+/* ---------- DOWNLOAD BUTTON ---------- */
+downloadBtn.onclick = () => {
+  const htmlContent = document.documentElement.outerHTML;
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'spin_on_doping_animation.html';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+animate();
+</script>
+</body>
+</html>
