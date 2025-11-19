@@ -38,6 +38,7 @@
         <option value="">All types</option>
         <option value="html">HTML</option>
         <option value="mp4">MP4</option>
+        <option value="gif">GIF</option>
       </select>
     </div>
   </header>
@@ -153,12 +154,20 @@
         card.className = 'card';
         const media = document.createElement('div');
         media.className = 'media';
-        if(s.type === 'html'){
+                if (s.type === 'html') {
           const f = document.createElement('iframe');
           // Sandbox limits script access for safety; drop allow-scripts if submissions need JS.
           f.setAttribute('sandbox','allow-same-origin allow-scripts');
           f.src = s.src;
           media.appendChild(f);
+        } else if (s.type === 'gif') {
+          const img = document.createElement('img');
+          img.src = s.src;
+          img.alt = s.title;
+          img.style.width = "100%";
+          img.style.height = "100%";
+          img.style.objectFit = "contain";
+          media.appendChild(img);
         } else {
           const v = document.createElement('video');
           v.controls = true;
@@ -166,6 +175,7 @@
           v.src = s.src;
           media.appendChild(v);
         }
+
         const body = document.createElement('div');
         body.className = 'body';
         const h = document.createElement('h3'); h.className='title'; h.textContent = s.title;
