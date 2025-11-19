@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EE5171 Fabrication Animation Showcase</title>
+  <style>
+    :root { --bg:#0b0c10; --card:#15171c; --text:#e9eef4; --muted:#9fb0c0; --ring:#3b82f6; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"}
+    header{padding:24px 16px;max-width:1100px;margin:0 auto}
+    h1{margin:0 0 6px;font-size:clamp(22px,3vw,32px)}
+    .sub{color:var(--muted);margin:0}
+    .toolbar{display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap}
+    input[type="search"], select{background:#0f1116;border:1px solid #222631;color:var(--text);padding:10px 12px;border-radius:10px;outline:none}
+    input[type="search"]:focus, select:focus{border-color:var(--ring);box-shadow:0 0 0 3px #3b82f644}
+    main{max-width:1100px;margin:0 auto;padding:0 16px 40px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+    .card{background:var(--card);border:1px solid #1e2230;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px #00000044}
+    .media{background:#0e0f14;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden}
+    iframe, video{width:100%;height:100%;display:block;border:0}
+    .body{padding:12px 14px}
+    .title{font-weight:600;margin:0 0 2px}
+    .meta{color:var(--muted);font-size:13px;margin:0}
+    .links{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .btn{font-size:13px;text-decoration:none;color:var(--text);background:#1e2430;border:1px solid #2a3244;padding:8px 10px;border-radius:10px}
+    .btn:hover{border-color:#3b82f6}
+    footer{max-width:1100px;margin:0 auto;padding:18px 16px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EE5171 • Fabrication Animation Showcase</h1>
+    <p class="sub">Student-created animations for semiconductor fabrication processes. Use search to find a student or topic. HTML entries are sandboxed below; open in a new tab for full-screen.</p>
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Search by name, topic, tool…" aria-label="Search" />
+      <select id="filter">
+        <option value="">All types</option>
+        <option value="html">HTML</option>
+        <option value="mp4">MP4</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div id="grid" class="grid" aria-live="polite"></div>
+  </main>
+
+  <footer>
+    <p>Privacy note: this page is intended for EE5171 students and teaching staff. Do not redistribute without permission.</p>
+  </footer>
+
+  <!-- ===== Manifest: edit this array to add your students ===== -->
+  <script>
+    // Each entry: { id, name, title, type: 'html'|'mp4', src, thumb?, tool?, tags?[] }
+    // Place files under /submissions/<id>/, and use relative paths for same-origin hosting (GitHub Pages/Netlify/etc.).
+    const submissions = [
+      // Examples — replace with real entries
+      { id: "s01", name: "A. Kim",  title: "Thermal Oxidation Flow", type: "html", src: "submissions/s01/index.html", tool: "Blender", tags:["oxidation","furnace"] },
+      { id: "s02", name: "B. Lee",  title: "Photolithography Basics",  type: "mp4",  src: "submissions/s02/animation.mp4", tool: "PowerPoint", tags:["lithography","resist"] },
+      { id: "s03", name: "C. Park", title: "ALD HfO2 Stack",       type: "html", src: "submissions/s03/hfo2.html", tool: "MicroSims", tags:["ALD","dielectric"] },
+    ];
+  </script>
+
+  <!-- ===== Page logic: renders cards + search/filter ===== -->
+  <script>
+    const grid = document.getElementById('grid');
+    const q = document.getElementById('q');
+    const filter = document.getElementById('filter');
+
+    function render(items){
+      grid.innerHTML = '';
+      if(!items.length){ grid.innerHTML = '<p style="color:#9fb0c0">No matches.</p>'; return; }
+      for(const s of items){
+        const card = document.createElement('article');
+        card.className = 'card';
+        const media = document.createElement('div');
+        media.className = 'media';
+        if(s.type === 'html'){
+          const f = document.createElement('iframe');
+          // Sandbox limits script access for safety; drop allow-scripts if submissions need JS.
+          f.setAttribute('sandbox','allow-same-origin allow-scripts');
+          f.src = s.src;
+          media.appendChild(f);
+        } else {
+          const v = document.createElement('video');
+          v.controls = true;
+          v.preload = 'metadata';
+          v.src = s.src;
+          media.appendChild(v);
+        }
+        const body = document.createElement('div');
+        body.className = 'body';
+        const h = document.createElement('h3'); h.className='title'; h.textContent = s.title;
+        const p = document.createElement('p'); p.className='meta'; p.textContent = `${s.name} • ${s.tool||'—'} • ${s.type.toUpperCase()}`;
+        const links = document.createElement('div'); links.className='links';
+        const open = document.createElement('a'); open.className='btn'; open.href = s.src; open.target = '_blank'; open.rel='noopener'; open.textContent='Open in new tab';
+        links.appendChild(open);
+        body.append(h,p,links);
+        card.append(media, body);
+        grid.appendChild(card);
+      }
+    }
+
+    function search(){
+      const term = q.value.trim().toLowerCase();
+      const kind = filter.value;
+      const items = submissions.filter(s => {
+        const hay = [s.name, s.title, s.tool, ...(s.tags||[])].join(' ').toLowerCase();
+        const passTerm = term ? hay.includes(term) : true;
+        const passKind = kind ? s.type === kind : true;
+        return passTerm && passKind;
+      });
+      render(items);
+    }
+
+    q.addEventListener('input', search);
+    filter.addEventListener('change', search);
+    render(submissions);
+  </script>
+</body>
+</html>
