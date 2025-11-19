@@ -244,12 +244,13 @@
         card.className = 'card';
         const media = document.createElement('div');
         media.className = 'media';
-                if (s.type === 'html') {
+                        if (s.type === 'html') {
           const f = document.createElement('iframe');
-          // Sandbox limits script access for safety; drop allow-scripts if submissions need JS.
+          // 학생이 만든 HTML 애니메이션
           f.setAttribute('sandbox','allow-same-origin allow-scripts');
           f.src = s.src;
           media.appendChild(f);
+
         } else if (s.type === 'gif') {
           const img = document.createElement('img');
           img.src = s.src;
@@ -258,13 +259,27 @@
           img.style.height = "100%";
           img.style.objectFit = "contain";
           media.appendChild(img);
+
+        } else if (s.type === 'youtube') {
+          const yt = document.createElement('iframe');
+          yt.src = s.src;
+          yt.title = s.title;
+          yt.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+          yt.allowFullscreen = true;
+          yt.style.width = "100%";
+          yt.style.height = "100%";
+          yt.frameBorder = "0";
+          media.appendChild(yt);
+
         } else {
+          // 혹시 남아있는 로컬 mp4가 있을 경우를 위한 fallback
           const v = document.createElement('video');
           v.controls = true;
           v.preload = 'metadata';
           v.src = s.src;
           media.appendChild(v);
         }
+
 
         const body = document.createElement('div');
         body.className = 'body';
